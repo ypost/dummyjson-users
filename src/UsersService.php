@@ -5,6 +5,7 @@ namespace YPost\DummyJsonUsers;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\RequestOptions;
+use InvalidArgumentException;
 use JsonException;
 use YPost\DummyJsonUsers\DTO\UserDTO;
 use YPost\DummyJsonUsers\DTO\UsersListDTO;
@@ -27,6 +28,10 @@ class UsersService
 
     public function getUser(int $id): UserDTO
     {
+        if ($id < 1) {
+            throw new InvalidArgumentException('Invalid user ID: must be a positive number');
+        }
+
         try {
             $url = sprintf('%s/users/%d', $this->baseUri, $id);
             $options = [
@@ -54,6 +59,14 @@ class UsersService
 
     public function getUsers(int $limit = 10, int $offset = 0): UsersListDTO
     {
+        if ($limit < 1) {
+            throw new InvalidArgumentException('Invalid users limit: must be a positive number');
+        }
+
+        if ($offset < 0) {
+            throw new InvalidArgumentException('Invalid users offset: must be a positive number or zero');
+        }
+
         try {
             $url = sprintf('%s/users', $this->baseUri);
             $options = [
@@ -76,7 +89,7 @@ class UsersService
 
         $data = $this->decodeResponse($response->getBody()->getContents());
 
-        if (empty($data['users']) || !is_array($data['users'])) {
+        if (!isset($data['users']) || !is_array($data['users'])) {
             throw new InvalidApiResponseException('Failed to get users list: missing or not an array');
         }
 
@@ -98,6 +111,22 @@ class UsersService
             total: $data['total'],
             limit: $limit,
             offset: $offset,
+        );
+    }
+
+    public function getUsersPage(int $page = 1, int $perPage = 10): UsersListDTO
+    {
+        if ($page < 1) {
+            throw new InvalidArgumentException('Invalid page number: must be a positive number');
+        }
+
+        if ($perPage < 1) {
+            throw new InvalidArgumentException('Invalid per page count: must be a positive number');
+        }
+
+        return $this->getUsers(
+            $perPage,
+            ($page - 1) * $perPage,
         );
     }
 

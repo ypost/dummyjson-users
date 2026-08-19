@@ -5,6 +5,7 @@ namespace YPost\DummyJsonUsers\Tests\Unit;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\Psr7\Response;
+use InvalidArgumentException;
 use JsonException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -36,22 +37,6 @@ class UsersServiceTest extends TestCase
         self::assertSame('John', $user->firstName);
         self::assertSame('Doe', $user->lastName);
         self::assertSame('john@example.com', $user->email);
-    }
-
-    public function testThrowsUserNotFoundException(): void
-    {
-        $mock = new MockHandler([new Response(404)]);
-        $service = new UsersService(new Client(['handler' => $mock]));
-        $this->expectException(UserNotFoundException::class);
-        $service->getUser(1_000_000);
-    }
-
-    public function testThrowsRemoteApiException(): void
-    {
-        $mock = new MockHandler([new Response(500)]);
-        $service = new UsersService(new Client(['handler' => $mock]));
-        $this->expectException(RemoteApiException::class);
-        $service->getUser(1);
     }
 
     /**
@@ -87,5 +72,82 @@ class UsersServiceTest extends TestCase
         self::assertSame('John', $list->users[0]->firstName);
         self::assertSame('Doe', $list->users[0]->lastName);
         self::assertSame('john@example.com', $list->users[0]->email);
+    }
+
+    /**
+     * @throws JsonException
+     */
+    public function testFetchesUsersPage(): void
+    {
+        $mock = new MockHandler([
+            new Response(200, [], json_encode([
+                'users' => [],
+                'total' => 30,
+                'limit' => 5,
+                'skip' => 10,
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $service = new UsersService(new Client(['handler' => $mock]));
+        $list = $service->getUsersPage(3, 5);
+
+        self::assertSame(5, $list->limit);
+        self::assertSame(10, $list->offset);
+    }
+
+    public function testThrowsUserNotFoundException(): void
+    {
+        $mock = new MockHandler([new Response(404)]);
+        $service = new UsersService(new Client(['handler' => $mock]));
+        $this->expectException(UserNotFoundException::class);
+        $service->getUser(1_000_000);
+    }
+
+    public function testThrowsRemoteApiException(): void
+    {
+        $mock = new MockHandler([new Response(500)]);
+        $service = new UsersService(new Client(['handler' => $mock]));
+        $this->expectException(RemoteApiException::class);
+        $service->getUser(1);
+    }
+
+    public function testThrowsInvalidArgumentExceptionOnIncorrectUserId(): void
+    {
+        $mock = new MockHandler([new Response(400)]);
+        $service = new UsersService(new Client(['handler' => $mock]));
+        $this->expectException(InvalidArgumentException::class);
+        $service->getUser(0);
+    }
+
+    public function testThrowsInvalidArgumentExceptionOnIncorrectUsersLimit(): void
+    {
+        $mock = new MockHandler([new Response(400)]);
+        $service = new UsersService(new Client(['handler' => $mock]));
+        $this->expectException(InvalidArgumentException::class);
+        $service->getUsers(0);
+    }
+
+    public function testThrowsInvalidArgumentExceptionOnIncorrectUsersOffset(): void
+    {
+        $mock = new MockHandler([new Response(400)]);
+        $service = new UsersService(new Client(['handler' => $mock]));
+        $this->expectException(InvalidArgumentException::class);
+        $service->getUsers(1, -1);
+    }
+
+    public function testThrowsInvalidArgumentExceptionOnIncorrectPageNumber(): void
+    {
+        $mock = new MockHandler([new Response(400)]);
+        $service = new UsersService(new Client(['handler' => $mock]));
+        $this->expectException(InvalidArgumentException::class);
+        $service->getUsersPage(0);
+    }
+
+    public function testThrowsInvalidArgumentExceptionOnIncorrectPerPageAmount(): void
+    {
+        $mock = new MockHandler([new Response(400)]);
+        $service = new UsersService(new Client(['handler' => $mock]));
+        $this->expectException(InvalidArgumentException::class);
+        $service->getUsersPage(1, 0);
     }
 }
