@@ -1,0 +1,36 @@
+{
+    "name": "ypost/dummyjson-users",
+    "description": "DummyJSON users client library",
+    "type": "library",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.4",
+        "guzzlehttp/guzzle": "^8.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^13.3",
+        "phpstan/phpstan": "^2.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "YPost\\DummyJsonUsers\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "YPost\\DummyJsonUsers\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "validate:composer": "composer validate --strict",
+        "analyse": "phpstan analyse",
+        "test": "phpunit --testsuite unit",
+        "test:integration": "phpunit --testsuite integration",
+        "test:all": "phpunit",
+        "check": [
+            "@validate:composer",
+            "@analyse",
+            "@test"
+        ]
+    }
+}
