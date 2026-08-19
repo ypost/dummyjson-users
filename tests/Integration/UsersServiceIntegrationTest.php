@@ -28,4 +28,17 @@ class UsersServiceIntegrationTest extends TestCase
         self::assertNotSame('', $user->lastName);
         self::assertNotSame('', $user->email);
     }
+
+    public function fetchesUsersList(): void
+    {
+        $list = $this->service->getUsers(5, 10);
+
+        self::assertCount(5, $list->users);
+        self::assertSame(5, $list->limit);
+        self::assertSame(10, $list->offset);
+
+        self::assertNotSame('', $list->users[0]->firstName);
+        self::assertNotSame('', $list->users[0]->lastName);
+        self::assertNotSame('', $list->users[0]->email);
+    }
 }

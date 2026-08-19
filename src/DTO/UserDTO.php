@@ -2,10 +2,12 @@
 
 namespace YPost\DummyJsonUsers\DTO;
 
+use JsonSerializable;
+
 /**
  * Represents a single user
  */
-class UserDTO implements \JsonSerializable
+class UserDTO implements JsonSerializable
 {
     public function __construct(
         public int    $id,
