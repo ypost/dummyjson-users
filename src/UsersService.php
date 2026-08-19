@@ -130,6 +130,45 @@ class UsersService
         );
     }
 
+    public function addUser(
+        string $firstName,
+        string $lastName,
+        string $email,
+    ): int {
+        try {
+            $url = sprintf('%s/users/add', $this->baseUri);
+            $options = [
+                RequestOptions::HTTP_ERRORS => false,
+                RequestOptions::TIMEOUT => $this->timeout,
+                RequestOptions::QUERY => [
+                    'firstName' => $firstName,
+                    'lastName' => $lastName,
+                    'email' => $email,
+                ],
+            ];
+
+            $response = $this->httpClient->request('POST', $url, $options);
+        } catch (GuzzleException $e) {
+            throw new RemoteApiException('Failed to add user using remote API', 0, $e);
+        }
+
+        if ($response->getStatusCode() !== 201) {
+            throw new RemoteApiException(sprintf('Failed to add user using remote API, got status code %d', $response->getStatusCode()));
+        }
+
+        $data = $this->decodeResponse($response->getBody()->getContents());
+
+        if (empty($data['id'])) {
+            throw new InvalidApiResponseException('Failed to add user using remote API: missing "id" field');
+        }
+
+        if (!is_int($data['id'])) {
+            throw new InvalidApiResponseException('Failed to add user using remote API: id is not an integer');
+        }
+
+        return $data['id'];
+    }
+
     /** @return array<array-key, mixed> */
     private function decodeResponse(string $json): array
     {

@@ -95,6 +95,26 @@ class UsersServiceTest extends TestCase
         self::assertSame(10, $list->offset);
     }
 
+    /**
+     * @throws JsonException
+     */
+    public function testCreatesUser(): void
+    {
+        $mock = new MockHandler([
+            new Response(201, [], json_encode([
+                'id' => 1000,
+                'firstName' => 'John',
+                'lastName' => 'Doe',
+                'email' => 'john@example.com',
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+
+        $service = new UsersService(new Client(['handler' => $mock]));
+        $newUserId = $service->addUser('John', 'Doe', 'john@example.com');
+
+        self::assertSame(1000, $newUserId);
+    }
+
     public function testThrowsUserNotFoundException(): void
     {
         $mock = new MockHandler([new Response(404)]);

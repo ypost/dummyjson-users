@@ -41,4 +41,12 @@ class UsersServiceIntegrationTest extends TestCase
         self::assertNotSame('', $list->users[0]->lastName);
         self::assertNotSame('', $list->users[0]->email);
     }
+
+
+    public function testAddsUser(): void
+    {
+        $newUserId = $this->service->addUser('John', 'Doe', 'john@example.com');
+
+        self::assertGreaterThan(0, $newUserId);
+    }
 }
