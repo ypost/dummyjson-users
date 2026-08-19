@@ -13,6 +13,8 @@ COPY --from=composer /usr/bin/composer /usr/bin/composer
 RUN pecl install xdebug \
     && docker-php-ext-enable xdebug
 
+RUN echo "memory_limit=-1" > /usr/local/etc/php/conf.d/99-development.ini
+
 WORKDIR /app
 
 CMD ["sleep", "infinity"]
