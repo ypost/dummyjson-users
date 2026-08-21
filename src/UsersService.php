@@ -81,7 +81,7 @@ class UsersService
                     PHP_QUERY_RFC3986,
                 )
             );
-            $request->withUri($uri);
+            $request = $request->withUri($uri);
 
             $response = $this->httpClient->sendRequest($request);
         } catch (ClientExceptionInterface $e) {
@@ -149,7 +149,9 @@ class UsersService
             ], JSON_THROW_ON_ERROR);
 
             $request = $this->requestFactory->createRequest('POST', $url);
-            $request = $request->withBody($this->streamFactory->createStream($json));
+            $request = $request
+                ->withHeader('Content-Type', 'application/json')
+                ->withBody($this->streamFactory->createStream($json));
             $response = $this->httpClient->sendRequest($request);
 
         } catch (JsonException $e) {

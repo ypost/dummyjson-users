@@ -9,7 +9,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use YPost\DummyJsonUsers\Exception\RemoteApiException;
 use YPost\DummyJsonUsers\Exception\UserNotFoundException;
-use YPost\DummyJsonUsers\Tests\MockHttpClient;
+use YPost\DummyJsonUsers\Tests\Support\MockHttpClient;
 use YPost\DummyJsonUsers\UsersService;
 
 #[CoversClass(UsersService::class)]

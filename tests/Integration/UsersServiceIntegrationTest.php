@@ -7,6 +7,7 @@ use GuzzleHttp\Psr7\HttpFactory;
 use GuzzleHttp\RequestOptions;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use YPost\DummyJsonUsers\Tests\Support\DebugHttpClient;
 use YPost\DummyJsonUsers\UsersService;
 
 #[CoversClass(UsersService::class)]
@@ -17,7 +18,7 @@ class UsersServiceIntegrationTest extends TestCase
     #[\Override]
     protected function setUp(): void
     {
-        $client = new Client(['timeout' => 1.0]);
+        $client = new DebugHttpClient(new Client(['timeout' => 1.0]));
         $httpFactory = new HttpFactory();
         $this->service = new UsersService($client, $httpFactory, $httpFactory);
     }
@@ -32,7 +33,7 @@ class UsersServiceIntegrationTest extends TestCase
         self::assertNotSame('', $user->email);
     }
 
-    public function fetchesUsersList(): void
+    public function testFetchesUsersList(): void
     {
         $list = $this->service->getUsers(5, 10);
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace YPost\DummyJsonUsers\Tests;
+namespace YPost\DummyJsonUsers\Tests\Support;
 
 use GuzzleHttp\Psr7\Response;
 use JsonException;
