@@ -7,6 +7,7 @@ use InvalidArgumentException;
 use JsonException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use YPost\DummyJsonUsers\Exception\InvalidApiResponseException;
 use YPost\DummyJsonUsers\Exception\RemoteApiException;
 use YPost\DummyJsonUsers\Exception\UserNotFoundException;
 use YPost\DummyJsonUsers\Exception\UsersInvalidArgumentException;
@@ -370,5 +371,25 @@ class UsersServiceTest extends TestCase
         $service = $this->createService($mock, 2);
         self::expectException(UserNotFoundException::class);
         $service->getUser(1);
+    }
+
+    /**
+     * @throws JsonException
+     */
+    public function testThrowsExceptionWhenReturnedUserDataDoesNotMatch(): void
+    {
+        $mock = new MockHttpClient(
+            200,
+            [
+                'id' => 1000,
+                'firstName' => 'John',
+                'lastName' => 'Doe',
+                'email' => 'john@example.com',
+            ]
+        );
+
+        $service = $this->createService($mock);
+        self::expectException(InvalidApiResponseException::class);
+        $service->addUser('Ada', 'Lovelace', 'first@1843.com');
     }
 }

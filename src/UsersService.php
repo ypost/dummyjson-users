@@ -213,6 +213,14 @@ class UsersService
             throw new InvalidApiResponseException('Failed to add user using remote API: id is not an integer');
         }
 
+        if (!isset($data['firstName'], $data['lastName'], $data['email'])
+            || $data['firstName'] !== $firstName
+            || $data['lastName'] !== $lastName
+            || $data['email'] !== $email
+        ) {
+            throw new InvalidApiResponseException('Failed to add user using remote API: returned user data does not match');
+        }
+
         return $data['id'];
     }
 
