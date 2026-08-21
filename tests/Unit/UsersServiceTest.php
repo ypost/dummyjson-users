@@ -9,6 +9,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use YPost\DummyJsonUsers\Exception\RemoteApiException;
 use YPost\DummyJsonUsers\Exception\UserNotFoundException;
+use YPost\DummyJsonUsers\Exception\UsersInvalidArgumentException;
 use YPost\DummyJsonUsers\Tests\Support\MockHttpClient;
 use YPost\DummyJsonUsers\UsersService;
 
@@ -135,63 +136,68 @@ class UsersServiceTest extends TestCase
     public function testThrowsRemoteApiException(): void
     {
         $mock = new MockHttpClient(500, []);
-        $service = $this->createService($mock);
-        $this->expectException(RemoteApiException::class);
-        $service->getUser(1);
+        try {
+            $service = $this->createService($mock);
+            $service->getUser(1);
+            self::fail('RemoteApiException should have been thrown');
+        } catch (RemoteApiException $e) {
+            self::assertSame(500, $e->httpStatusCode);
+            self::assertSame(500, $e->getCode());
+        }
     }
 
     /**
      * @throws JsonException
      */
-    public function testThrowsInvalidArgumentExceptionOnIncorrectUserId(): void
+    public function testThrowsUsersInvalidArgumentExceptionOnIncorrectUserId(): void
     {
         $mock = new MockHttpClient(400, []);
         $service = $this->createService($mock);
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(UsersInvalidArgumentException::class);
         $service->getUser(0);
     }
 
     /**
      * @throws JsonException
      */
-    public function testThrowsInvalidArgumentExceptionOnIncorrectUsersLimit(): void
+    public function testThrowsUsersInvalidArgumentExceptionOnIncorrectUsersLimit(): void
     {
         $mock = new MockHttpClient(400, []);
         $service = $this->createService($mock);
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(UsersInvalidArgumentException::class);
         $service->getUsers(0);
     }
 
     /**
      * @throws JsonException
      */
-    public function testThrowsInvalidArgumentExceptionOnIncorrectUsersOffset(): void
+    public function testThrowsUsersInvalidArgumentExceptionOnIncorrectUsersOffset(): void
     {
         $mock = new MockHttpClient(400, []);
         $service = $this->createService($mock);
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(UsersInvalidArgumentException::class);
         $service->getUsers(1, -1);
     }
 
     /**
      * @throws JsonException
      */
-    public function testThrowsInvalidArgumentExceptionOnIncorrectPageNumber(): void
+    public function testThrowsUsersInvalidArgumentExceptionOnIncorrectPageNumber(): void
     {
         $mock = new MockHttpClient(400, []);
         $service = $this->createService($mock);
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(UsersInvalidArgumentException::class);
         $service->getUsersPage(0);
     }
 
     /**
      * @throws JsonException
      */
-    public function testThrowsInvalidArgumentExceptionOnIncorrectPerPageAmount(): void
+    public function testThrowsUsersInvalidArgumentExceptionOnIncorrectPerPageAmount(): void
     {
         $mock = new MockHttpClient(400, []);
         $service = $this->createService($mock);
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(UsersInvalidArgumentException::class);
         $service->getUsersPage(1, 0);
     }
 

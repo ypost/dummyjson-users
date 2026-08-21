@@ -20,10 +20,10 @@ class UsersService
     private const string DEFAULT_BASE_URI = "https://dummyjson.com";
 
     public function __construct(
-        private readonly ClientInterface $httpClient,
+        private readonly ClientInterface         $httpClient,
         private readonly RequestFactoryInterface $requestFactory,
-        private readonly StreamFactoryInterface $streamFactory,
-        private readonly string $baseUri = self::DEFAULT_BASE_URI,
+        private readonly StreamFactoryInterface  $streamFactory,
+        private readonly string                  $baseUri = self::DEFAULT_BASE_URI,
     )
     {
     }
@@ -39,7 +39,10 @@ class UsersService
             $request = $this->requestFactory->createRequest('GET', $url);
             $response = $this->httpClient->sendRequest($request);
         } catch (ClientExceptionInterface $e) {
-            throw new RemoteApiException('Failed to get user from remote API', 0, $e);
+            throw new RemoteApiException(
+                message: 'Failed to get user from remote API',
+                previous: $e,
+            );
         }
 
         if ($response->getStatusCode() === 404) {
@@ -47,7 +50,12 @@ class UsersService
         }
 
         if ($response->getStatusCode() !== 200) {
-            throw new RemoteApiException(sprintf('Failed to get user from remote API, got status code %d', $response->getStatusCode()));
+            $statusCode = $response->getStatusCode();
+            throw new RemoteApiException(
+                sprintf('Failed to get user from remote API, got status code %d', $statusCode),
+                $statusCode,
+                (string)$response->getBody(),
+            );
         }
 
         $data = $this->decodeResponse($response->getBody()->getContents());
@@ -85,11 +93,19 @@ class UsersService
 
             $response = $this->httpClient->sendRequest($request);
         } catch (ClientExceptionInterface $e) {
-            throw new RemoteApiException('Failed to get users list from remote API', 0, $e);
+            throw new RemoteApiException(
+                message: 'Failed to get users list from remote API',
+                previous: $e,
+            );
         }
 
         if ($response->getStatusCode() !== 200) {
-            throw new RemoteApiException(sprintf('Failed to get users list from remote API, got status code %d', $response->getStatusCode()));
+            $statusCode = $response->getStatusCode();
+            throw new RemoteApiException(
+                sprintf('Failed to get users list from remote API, got status code %d', $statusCode),
+                $statusCode,
+                (string)$response->getBody(),
+            );
         }
 
         $data = $this->decodeResponse($response->getBody()->getContents());
@@ -139,7 +155,8 @@ class UsersService
         string $firstName,
         string $lastName,
         string $email,
-    ): int {
+    ): int
+    {
         try {
             $url = sprintf('%s/users/add', $this->baseUri);
             $json = json_encode([
@@ -157,11 +174,19 @@ class UsersService
         } catch (JsonException $e) {
             throw new UsersInvalidArgumentException('Failed to encode user data to JSON', 0, $e);
         } catch (ClientExceptionInterface $e) {
-            throw new RemoteApiException('Failed to add user using remote API', 0, $e);
+            throw new RemoteApiException(
+                message: 'Failed to add user using remote API',
+                previous: $e,
+            );
         }
 
         if ($response->getStatusCode() !== 201) {
-            throw new RemoteApiException(sprintf('Failed to add user using remote API, got status code %d', $response->getStatusCode()));
+            $statusCode = $response->getStatusCode();
+            throw new RemoteApiException(
+                sprintf('Failed to add user using remote API, got status code %d', $statusCode),
+                $statusCode,
+                (string)$response->getBody(),
+            );
         }
 
         $data = $this->decodeResponse($response->getBody()->getContents());
