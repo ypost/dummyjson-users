@@ -8,6 +8,12 @@ It is a client library for retrieving and creating users using the DummyJSON API
 - PSR-18 compatible HTTP client, e.g. `GuzzleHttp\Client`
 - PSR-17 compatible request and stream factories, e.g. `GuzzleHttp\Psr7\HttpFactory`
 
+The package does not provide a specific HTTP client implementation.
+If you want to use Guzzle as in the examples below, install it separately:
+```bash
+composer require guzzlehttp/guzzle guzzlehttp/psr7
+```
+
 ## Installation
 Project is not on Packagist so you need to add its repository 
 ```
