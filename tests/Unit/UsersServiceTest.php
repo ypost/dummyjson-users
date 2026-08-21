@@ -382,7 +382,7 @@ class UsersServiceTest extends TestCase
             ]
         );
 
-        $service = $this->createService($mock);
+        $service = $this->createService($mock, 2);
 
         try {
             $service->addUser('John', 'Doe', 'john@example.com');
