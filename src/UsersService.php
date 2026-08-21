@@ -6,6 +6,8 @@ use JsonException;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use YPost\DummyJsonUsers\DTO\UserDTO;
 use YPost\DummyJsonUsers\DTO\UsersListDTO;
@@ -19,14 +21,31 @@ class UsersService
 {
     private const string DEFAULT_BASE_URI = 'https://dummyjson.com';
     public const string USER_FIELDS = 'id,firstName,lastName,email';
+    private const array RETRY_STATUS_CODES = [429, 500, 502, 503, 504];
 
     public function __construct(
         private readonly ClientInterface         $httpClient,
         private readonly RequestFactoryInterface $requestFactory,
         private readonly StreamFactoryInterface  $streamFactory,
+        private readonly int                     $maxAttempts = 3,
+        /** @var list<int> */
+        private readonly array                   $retryDelayMs = [100, 300, 500, 1000],
         private readonly string                  $baseUri = self::DEFAULT_BASE_URI,
     )
     {
+        if ($this->maxAttempts < 1) {
+            throw new UsersInvalidArgumentException('Maximum number of attempts should be greater than 0.');
+        }
+
+        if (empty($this->retryDelayMs)) {
+            throw new UsersInvalidArgumentException('Delays list must not be empty.');
+        }
+
+        foreach ($this->retryDelayMs as $delay) {
+            if ($delay < 0) {
+                throw new UsersInvalidArgumentException('Delay cannot be less than zero.');
+            }
+        }
     }
 
     public function getUser(int $id): UserDTO
@@ -35,23 +54,17 @@ class UsersService
             throw new UsersInvalidArgumentException('Invalid user ID: must be a positive number');
         }
 
-        try {
-            $url = sprintf('%s/users/%d', $this->baseUri, $id);
-            $request = $this->requestFactory->createRequest('GET', $url);
-            $response = $this->httpClient->sendRequest($request);
-        } catch (ClientExceptionInterface $e) {
-            throw new RemoteApiException(
-                message: 'Failed to get user from remote API',
-                previous: $e,
-            );
-        }
+        $url = sprintf('%s/users/%d', $this->baseUri, $id);
+        $request = $this->requestFactory->createRequest('GET', $url);
+        $response = $this->sendWithRetry($request, 'Failed to get user from remote API');
 
         if ($response->getStatusCode() === 404) {
             throw new UserNotFoundException($id);
         }
 
-        if ($response->getStatusCode() !== 200) {
-            $statusCode = $response->getStatusCode();
+        $statusCode = $response->getStatusCode();
+
+        if (!$this->isSuccessfulStatusCode($statusCode)) {
             throw new RemoteApiException(
                 sprintf('Failed to get user from remote API, got status code %d', $statusCode),
                 $statusCode,
@@ -74,35 +87,29 @@ class UsersService
             throw new UsersInvalidArgumentException('Invalid users offset: must be a positive number or zero');
         }
 
-        try {
-            $url = sprintf('%s/users', $this->baseUri);
-            $request = $this->requestFactory->createRequest('GET', $url);
+        $url = sprintf('%s/users', $this->baseUri);
+        $request = $this->requestFactory->createRequest('GET', $url);
 
-            $query = [
-                'limit' => $limit,
-                'skip' => $skip,
-                'select' => self::USER_FIELDS,
-            ];
-            $uri = $request->getUri()->withQuery(
-                http_build_query(
-                    $query,
-                    '',
-                    '&',
-                    PHP_QUERY_RFC3986,
-                )
-            );
-            $request = $request->withUri($uri);
+        $query = [
+            'limit' => $limit,
+            'skip' => $skip,
+            'select' => self::USER_FIELDS,
+        ];
+        $uri = $request->getUri()->withQuery(
+            http_build_query(
+                $query,
+                '',
+                '&',
+                PHP_QUERY_RFC3986,
+            )
+        );
+        $request = $request->withUri($uri);
 
-            $response = $this->httpClient->sendRequest($request);
-        } catch (ClientExceptionInterface $e) {
-            throw new RemoteApiException(
-                message: 'Failed to get users list from remote API',
-                previous: $e,
-            );
-        }
+        $response = $this->sendWithRetry($request, 'Failed to get users list from remote API');
 
-        if ($response->getStatusCode() !== 200) {
-            $statusCode = $response->getStatusCode();
+        $statusCode = $response->getStatusCode();
+
+        if (!$this->isSuccessfulStatusCode($statusCode)) {
             throw new RemoteApiException(
                 sprintf('Failed to get users list from remote API, got status code %d', $statusCode),
                 $statusCode,
@@ -175,8 +182,8 @@ class UsersService
             $request = $request
                 ->withHeader('Content-Type', 'application/json')
                 ->withBody($this->streamFactory->createStream($json));
-            $response = $this->httpClient->sendRequest($request);
 
+            $response = $this->httpClient->sendRequest($request);
         } catch (JsonException $e) {
             throw new UsersInvalidArgumentException('Failed to encode user data to JSON', 0, $e);
         } catch (ClientExceptionInterface $e) {
@@ -186,8 +193,9 @@ class UsersService
             );
         }
 
-        if ($response->getStatusCode() !== 201) {
-            $statusCode = $response->getStatusCode();
+        $statusCode = $response->getStatusCode();
+
+        if (!$this->isSuccessfulStatusCode($statusCode)) {
             throw new RemoteApiException(
                 sprintf('Failed to add user using remote API, got status code %d', $statusCode),
                 $statusCode,
@@ -222,5 +230,55 @@ class UsersService
         }
 
         return $data;
+    }
+
+    private function isSuccessfulStatusCode(int $statusCode): bool
+    {
+        return $statusCode >= 200 && $statusCode < 300;
+    }
+
+    private function sendWithRetry(RequestInterface $request, string $errorMessage): ResponseInterface
+    {
+        $lastException = null;
+
+        for ($attempt = 1; $attempt <= $this->maxAttempts; $attempt++) {
+            try {
+                $response = $this->httpClient->sendRequest($request);
+            } catch (ClientExceptionInterface $e) {
+                if ($attempt === $this->maxAttempts) {
+                    throw new RemoteApiException(
+                        message: $errorMessage,
+                        previous: $e,
+                    );
+                }
+
+                $this->waitBeforeRetry($attempt);
+                continue;
+            }
+
+            $statusCode = $response->getStatusCode();
+            $shouldRetry = in_array($statusCode, self::RETRY_STATUS_CODES, true);
+
+            if (!$shouldRetry || $attempt === $this->maxAttempts) {
+                return $response;
+            }
+
+            $this->waitBeforeRetry($attempt);
+        }
+
+        throw new RemoteApiException(
+            message: $errorMessage,
+            previous: $lastException,
+        );
+    }
+
+    private function waitBeforeRetry(int $attemptNumber): void
+    {
+        $delayIndex = min($attemptNumber, count($this->retryDelayMs)) - 1;
+        $delayMs = $this->retryDelayMs[$delayIndex];
+
+        if ($delayMs > 0) {
+            usleep($delayMs * 1000);
+        }
     }
 }

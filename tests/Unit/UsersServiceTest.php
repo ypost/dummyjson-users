@@ -220,9 +220,155 @@ class UsersServiceTest extends TestCase
         $service->getUsersPage(1, 0);
     }
 
-    private function createService(MockHttpClient $mock): UsersService
+    private function createService(MockHttpClient $mock, int $maxAttempts = 1): UsersService
     {
         $httpFactory = new HttpFactory();
-        return new UsersService($mock, $httpFactory, $httpFactory);
+        return new UsersService($mock, $httpFactory, $httpFactory, $maxAttempts, [0]);
+    }
+
+    /**
+     * @throws JsonException
+     */
+    public function testRetriesFetchUserOnRetriableStatuses(): void
+    {
+        $mock = new MockHttpClient(500, []);
+        $mock->queueResponse(502);
+        $mock->queueResponse(
+            200,
+            [
+                'id' => 1,
+                'firstName' => 'John',
+                'lastName' => 'Doe',
+                'email' => 'john@example.com',
+            ]
+        );
+        $service = $this->createService($mock, 3);
+        $user = $service->getUser(1);
+
+        self::assertSame(1, $user->id);
+        self::assertCount(3, $mock->requests);
+    }
+
+    /**
+     * @throws JsonException
+     */
+    public function testRetriesFetchUsersListOnRetriableStatuses(): void
+    {
+        $mock = new MockHttpClient(429, []);
+        $mock->queueResponse(503);
+        $mock->queueResponse(504);
+        $mock->queueResponse(
+            200,
+            [
+                'users' => [
+                    [
+                        'id' => 1,
+                        'firstName' => 'John',
+                        'lastName' => 'Doe',
+                        'email' => 'john@example.com',
+                    ],
+                ],
+                'total' => 10,
+                'limit' => 1,
+                'skip' => 0,
+            ]
+        );
+        $service = $this->createService($mock, 4);
+        $list = $service->getUsers(1);
+
+        self::assertCount(1, $list->users);
+        self::assertCount(4, $mock->requests);
+        self::assertSame(1, $list->users[0]->id);
+    }
+
+    /**
+     * @throws JsonException
+     */
+    public function testThrowsExceptionIfAttemptsExhausted(): void
+    {
+        $mock = new MockHttpClient(500, []);
+        $mock->queueResponse(502);
+        $mock->queueResponse();
+        $service = $this->createService($mock, 2);
+        self::expectException(RemoteApiException::class);
+        $service->getUser(1);
+    }
+
+    /**
+     * @throws JsonException
+     */
+    public function testAcceptsAny2xxStatusWhenFetchesUser(): void
+    {
+        $mock = new MockHttpClient(
+            203,
+            [
+                'id' => 1,
+                'firstName' => 'John',
+                'lastName' => 'Doe',
+                'email' => 'john@example.com',
+            ]
+        );
+
+        $service = $this->createService($mock);
+        $user = $service->getUser(1);
+
+        self::assertSame(1, $user->id);
+        self::assertCount(1, $mock->requests);
+    }
+
+    /**
+     * @throws JsonException
+     */
+    public function testAcceptsAny2xxStatusWhenAddsUser(): void
+    {
+        $mock = new MockHttpClient(
+            200,
+            [
+                'id' => 1000,
+                'firstName' => 'John',
+                'lastName' => 'Doe',
+                'email' => 'john@example.com',
+            ]
+        );
+
+        $service = $this->createService($mock);
+        $newUserId = $service->addUser('John', 'Doe', 'john@example.com');
+
+        self::assertSame(1000, $newUserId);
+        self::assertCount(1, $mock->requests);
+    }
+
+    /**
+     * @throws JsonException
+     */
+    public function testDoesNotRetryAddingUser(): void
+    {
+        $mock = new MockHttpClient(
+            500,
+            [
+                'id' => 1000,
+                'firstName' => 'John',
+                'lastName' => 'Doe',
+                'email' => 'john@example.com',
+            ]
+        );
+
+        $service = $this->createService($mock);
+        self::expectException(RemoteApiException::class);
+        $service->addUser('John', 'Doe', 'john@example.com');
+
+        self::assertCount(1, $mock->requests);
+    }
+
+    /**
+     * @throws JsonException
+     */
+    public function testDoesNotRetryNonRetriableStatus(): void
+    {
+        $mock = new MockHttpClient(404, []);
+        $mock->queueResponse();
+        $service = $this->createService($mock, 2);
+        self::expectException(UserNotFoundException::class);
+        $service->getUser(1);
     }
 }
