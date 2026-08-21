@@ -147,6 +147,10 @@ class UsersService
             throw new UsersInvalidArgumentException('Invalid per page count: must be a positive number');
         }
 
+        if ($page - 1 > intdiv(PHP_INT_MAX, $perPage)) {
+            throw new UsersInvalidArgumentException('Invalid page number: value out of range');
+        }
+
         return $this->getUsers(
             $perPage,
             ($page - 1) * $perPage,

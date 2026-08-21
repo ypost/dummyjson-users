@@ -201,6 +201,17 @@ class UsersServiceTest extends TestCase
     /**
      * @throws JsonException
      */
+    public function testThrowsUsersInvalidArgumentExceptionIfPageNumberIsTooBig(): void
+    {
+        $mock = new MockHttpClient(400, []);
+        $service = $this->createService($mock);
+        $this->expectException(UsersInvalidArgumentException::class);
+        $service->getUsersPage(PHP_INT_MAX);
+    }
+
+    /**
+     * @throws JsonException
+     */
     public function testThrowsUsersInvalidArgumentExceptionOnIncorrectPerPageAmount(): void
     {
         $mock = new MockHttpClient(400, []);
