@@ -17,7 +17,8 @@ use YPost\DummyJsonUsers\Mapper\UserMapper;
 
 class UsersService
 {
-    private const string DEFAULT_BASE_URI = "https://dummyjson.com";
+    private const string DEFAULT_BASE_URI = 'https://dummyjson.com';
+    public const string USER_FIELDS = 'id,firstName,lastName,email';
 
     public function __construct(
         private readonly ClientInterface         $httpClient,
@@ -80,6 +81,7 @@ class UsersService
             $query = [
                 'limit' => $limit,
                 'skip' => $skip,
+                'select' => self::USER_FIELDS,
             ];
             $uri = $request->getUri()->withQuery(
                 http_build_query(

@@ -10,6 +10,7 @@ use Psr\Http\Message\ResponseInterface;
 
 class MockHttpClient implements ClientInterface
 {
+    public ?RequestInterface $lastRequest = null;
     private ResponseInterface $response;
 
     /**
@@ -24,6 +25,8 @@ class MockHttpClient implements ClientInterface
 
     public function sendRequest(RequestInterface $request): ResponseInterface
     {
+        $this->lastRequest = $request;
+
         return $this->response;
     }
 }

@@ -65,6 +65,14 @@ class UsersServiceTest extends TestCase
         $service = $this->createService($mock);
         $list = $service->getUsers(1);
 
+        self::assertNotNull($mock->lastRequest);
+
+        parse_str($mock->lastRequest->getUri()->getQuery(), $query);
+
+        self::assertSame('1', $query['limit']);
+        self::assertSame('0', $query['skip']);
+        self::assertSame(UsersService::USER_FIELDS, $query['select']);
+
         self::assertCount(1, $list->users);
         self::assertSame(10, $list->total);
         self::assertSame(1, $list->limit);
