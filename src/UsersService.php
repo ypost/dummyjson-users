@@ -5,6 +5,7 @@ namespace YPost\DummyJsonUsers;
 use JsonException;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
+use Psr\Http\Client\NetworkExceptionInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -282,7 +283,7 @@ class UsersService
         for ($attempt = 1; ; $attempt++) {
             try {
                 $response = $this->httpClient->sendRequest($request);
-            } catch (ClientExceptionInterface $e) {
+            } catch (NetworkExceptionInterface $e) {
                 if ($attempt >= $this->maxAttempts) {
                     throw new RemoteApiException(
                         message: $errorMessage,
@@ -291,10 +292,16 @@ class UsersService
                 }
 
                 $this->waitBeforeRetry($attempt);
+
                 continue;
+            } catch (ClientExceptionInterface $e) {
+                throw new RemoteApiException(
+                    message: $errorMessage,
+                    previous: $e,
+                );
             }
 
-            $shouldRetry = in_array($response->getStatusCode(), self::RETRY_STATUS_CODES,true);
+            $shouldRetry = in_array($response->getStatusCode(), self::RETRY_STATUS_CODES, true);
 
             if (!$shouldRetry || $attempt >= $this->maxAttempts) {
                 return $response;
