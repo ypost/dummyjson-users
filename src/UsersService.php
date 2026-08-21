@@ -140,6 +140,14 @@ class UsersService
             throw new InvalidApiResponseException('Failed to get users list: missing total number');
         }
 
+        if (!isset($data['limit']) || !is_int($data['limit'])) {
+            throw new InvalidApiResponseException('Failed to get users list: missing users limit');
+        }
+
+        if (!isset($data['skip']) || !is_int($data['skip'])) {
+            throw new InvalidApiResponseException('Failed to get users list: missing skipped users number');
+        }
+
         $users = [];
         foreach ($data['users'] as $user) {
             if (!is_array($user)) {
@@ -152,8 +160,8 @@ class UsersService
         return new UsersListDTO(
             users: $users,
             total: $data['total'],
-            limit: $limit,
-            skip: $skip,
+            limit: $data['limit'],
+            skip: $data['skip'],
         );
     }
 
@@ -271,13 +279,11 @@ class UsersService
 
     private function sendWithRetry(RequestInterface $request, string $errorMessage): ResponseInterface
     {
-        $lastException = null;
-
-        for ($attempt = 1; $attempt <= $this->maxAttempts; $attempt++) {
+        for ($attempt = 1; ; $attempt++) {
             try {
                 $response = $this->httpClient->sendRequest($request);
             } catch (ClientExceptionInterface $e) {
-                if ($attempt === $this->maxAttempts) {
+                if ($attempt >= $this->maxAttempts) {
                     throw new RemoteApiException(
                         message: $errorMessage,
                         previous: $e,
@@ -288,20 +294,14 @@ class UsersService
                 continue;
             }
 
-            $statusCode = $response->getStatusCode();
-            $shouldRetry = in_array($statusCode, self::RETRY_STATUS_CODES, true);
+            $shouldRetry = in_array($response->getStatusCode(), self::RETRY_STATUS_CODES,true);
 
-            if (!$shouldRetry || $attempt === $this->maxAttempts) {
+            if (!$shouldRetry || $attempt >= $this->maxAttempts) {
                 return $response;
             }
 
             $this->waitBeforeRetry($attempt);
         }
-
-        throw new RemoteApiException(
-            message: $errorMessage,
-            previous: $lastException,
-        );
     }
 
     private function waitBeforeRetry(int $attemptNumber): void
