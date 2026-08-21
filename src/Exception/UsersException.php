@@ -2,9 +2,7 @@
 
 namespace YPost\DummyJsonUsers\Exception;
 
-use RuntimeException;
-
-class UsersException extends RuntimeException
+interface UsersException extends \Throwable
 {
 
 }

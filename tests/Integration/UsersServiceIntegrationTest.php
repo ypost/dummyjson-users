@@ -3,6 +3,7 @@
 namespace YPost\DummyJsonUsers\Tests\Integration;
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\HttpFactory;
 use GuzzleHttp\RequestOptions;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -16,7 +17,9 @@ class UsersServiceIntegrationTest extends TestCase
     #[\Override]
     protected function setUp(): void
     {
-        $this->service = new UsersService(new Client([RequestOptions::TIMEOUT => 10.0]));
+        $client = new Client(['timeout' => 1.0]);
+        $httpFactory = new HttpFactory();
+        $this->service = new UsersService($client, $httpFactory, $httpFactory);
     }
 
     public function testFetchesUser(): void
@@ -35,7 +38,7 @@ class UsersServiceIntegrationTest extends TestCase
 
         self::assertCount(5, $list->users);
         self::assertSame(5, $list->limit);
-        self::assertSame(10, $list->offset);
+        self::assertSame(10, $list->skip);
 
         self::assertNotSame('', $list->users[0]->firstName);
         self::assertNotSame('', $list->users[0]->lastName);

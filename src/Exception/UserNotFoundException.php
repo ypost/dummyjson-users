@@ -2,9 +2,7 @@
 
 namespace YPost\DummyJsonUsers\Exception;
 
-use YPost\DummyJsonUsers\Exception\UsersException;
-
-class UserNotFoundException extends UsersException
+class UserNotFoundException extends \RuntimeException implements UsersException
 {
     public function __construct(
         public readonly int $id

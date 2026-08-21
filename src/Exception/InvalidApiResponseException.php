@@ -2,9 +2,7 @@
 
 namespace YPost\DummyJsonUsers\Exception;
 
-use YPost\DummyJsonUsers\Exception\UsersException;
-
-class InvalidApiResponseException extends UsersException
+class InvalidApiResponseException extends \RuntimeException implements UsersException
 {
 
 }

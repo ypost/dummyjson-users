@@ -2,9 +2,7 @@
 
 namespace YPost\DummyJsonUsers\Exception;
 
-use YPost\DummyJsonUsers\Exception\UsersException;
-
-class RemoteApiException extends UsersException
+class RemoteApiException extends \RuntimeException implements UsersException
 {
 
 }

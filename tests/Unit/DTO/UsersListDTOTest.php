@@ -29,7 +29,7 @@ class UsersListDTOTest extends TestCase
             ],
             total: 10,
             limit: 2,
-            offset: 0,
+            skip: 0,
         );
 
         self::assertSame([
@@ -49,7 +49,7 @@ class UsersListDTOTest extends TestCase
             ],
             'total' => 10,
             'limit' => 2,
-            'offset' => 0,
+            'skip' => 0,
         ], $usersList->toArray());
     }
 
@@ -66,7 +66,7 @@ class UsersListDTOTest extends TestCase
             ],
             total: 10,
             limit: 1,
-            offset: 0,
+            skip: 0,
         );
 
         self::assertSame($usersList->toArray(), $usersList->jsonSerialize());

@@ -5,7 +5,7 @@ namespace YPost\DummyJsonUsers\DTO;
 use JsonSerializable;
 
 /**
- * Represents a list of users with limit, offset and total users count
+ * Represents a list of users with limit, skip and total users count
  */
 class UsersListDTO implements JsonSerializable
 {
@@ -16,7 +16,7 @@ class UsersListDTO implements JsonSerializable
         public array $users,
         public int   $total,
         public int   $limit,
-        public int   $offset,
+        public int   $skip,
     )
     {
     }
@@ -31,7 +31,7 @@ class UsersListDTO implements JsonSerializable
      *     }>,
      *     total: int,
      *     limit: int,
-     *     offset: int,
+     *     skip: int,
      * }
      */
     public function toArray(): array
@@ -43,7 +43,7 @@ class UsersListDTO implements JsonSerializable
             ),
             'total' => $this->total,
             'limit' => $this->limit,
-            'offset' => $this->offset,
+            'skip' => $this->skip,
         ];
     }
 
@@ -57,7 +57,7 @@ class UsersListDTO implements JsonSerializable
      *     }>,
      *     total: int,
      *     limit: int,
-     *     offset: int,
+     *     skip: int,
      * }
      */
     #[\Override]

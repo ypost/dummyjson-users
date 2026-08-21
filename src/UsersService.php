@@ -2,16 +2,17 @@
 
 namespace YPost\DummyJsonUsers;
 
-use GuzzleHttp\ClientInterface;
-use GuzzleHttp\Exception\GuzzleException;
-use GuzzleHttp\RequestOptions;
-use InvalidArgumentException;
 use JsonException;
+use Psr\Http\Client\ClientExceptionInterface;
+use Psr\Http\Client\ClientInterface;
+use Psr\Http\Message\RequestFactoryInterface;
+use Psr\Http\Message\StreamFactoryInterface;
 use YPost\DummyJsonUsers\DTO\UserDTO;
 use YPost\DummyJsonUsers\DTO\UsersListDTO;
 use YPost\DummyJsonUsers\Exception\InvalidApiResponseException;
 use YPost\DummyJsonUsers\Exception\RemoteApiException;
 use YPost\DummyJsonUsers\Exception\UserNotFoundException;
+use YPost\DummyJsonUsers\Exception\UsersInvalidArgumentException;
 use YPost\DummyJsonUsers\Mapper\UserMapper;
 
 class UsersService
@@ -20,8 +21,9 @@ class UsersService
 
     public function __construct(
         private readonly ClientInterface $httpClient,
+        private readonly RequestFactoryInterface $requestFactory,
+        private readonly StreamFactoryInterface $streamFactory,
         private readonly string $baseUri = self::DEFAULT_BASE_URI,
-        private readonly float $timeout = 10.0,
     )
     {
     }
@@ -29,18 +31,14 @@ class UsersService
     public function getUser(int $id): UserDTO
     {
         if ($id < 1) {
-            throw new InvalidArgumentException('Invalid user ID: must be a positive number');
+            throw new UsersInvalidArgumentException('Invalid user ID: must be a positive number');
         }
 
         try {
             $url = sprintf('%s/users/%d', $this->baseUri, $id);
-            $options = [
-                RequestOptions::HTTP_ERRORS => false,
-                RequestOptions::TIMEOUT => $this->timeout,
-            ];
-
-            $response = $this->httpClient->request('GET', $url, $options);
-        } catch (GuzzleException $e) {
+            $request = $this->requestFactory->createRequest('GET', $url);
+            $response = $this->httpClient->sendRequest($request);
+        } catch (ClientExceptionInterface $e) {
             throw new RemoteApiException('Failed to get user from remote API', 0, $e);
         }
 
@@ -57,29 +55,36 @@ class UsersService
         return UserMapper::fromArray($data);
     }
 
-    public function getUsers(int $limit = 10, int $offset = 0): UsersListDTO
+    public function getUsers(int $limit = 10, int $skip = 0): UsersListDTO
     {
         if ($limit < 1) {
-            throw new InvalidArgumentException('Invalid users limit: must be a positive number');
+            throw new UsersInvalidArgumentException('Invalid users limit: must be a positive number');
         }
 
-        if ($offset < 0) {
-            throw new InvalidArgumentException('Invalid users offset: must be a positive number or zero');
+        if ($skip < 0) {
+            throw new UsersInvalidArgumentException('Invalid users offset: must be a positive number or zero');
         }
 
         try {
             $url = sprintf('%s/users', $this->baseUri);
-            $options = [
-                RequestOptions::HTTP_ERRORS => false,
-                RequestOptions::TIMEOUT => $this->timeout,
-                RequestOptions::QUERY => [
-                    'limit' => $limit,
-                    'skip' => $offset,
-                ],
-            ];
+            $request = $this->requestFactory->createRequest('GET', $url);
 
-            $response = $this->httpClient->request('GET', $url, $options);
-        } catch (GuzzleException $e) {
+            $query = [
+                'limit' => $limit,
+                'skip' => $skip,
+            ];
+            $uri = $request->getUri()->withQuery(
+                http_build_query(
+                    $query,
+                    '',
+                    '&',
+                    PHP_QUERY_RFC3986,
+                )
+            );
+            $request->withUri($uri);
+
+            $response = $this->httpClient->sendRequest($request);
+        } catch (ClientExceptionInterface $e) {
             throw new RemoteApiException('Failed to get users list from remote API', 0, $e);
         }
 
@@ -110,18 +115,18 @@ class UsersService
             users: $users,
             total: $data['total'],
             limit: $limit,
-            offset: $offset,
+            skip: $skip,
         );
     }
 
     public function getUsersPage(int $page = 1, int $perPage = 10): UsersListDTO
     {
         if ($page < 1) {
-            throw new InvalidArgumentException('Invalid page number: must be a positive number');
+            throw new UsersInvalidArgumentException('Invalid page number: must be a positive number');
         }
 
         if ($perPage < 1) {
-            throw new InvalidArgumentException('Invalid per page count: must be a positive number');
+            throw new UsersInvalidArgumentException('Invalid per page count: must be a positive number');
         }
 
         return $this->getUsers(
@@ -137,18 +142,19 @@ class UsersService
     ): int {
         try {
             $url = sprintf('%s/users/add', $this->baseUri);
-            $options = [
-                RequestOptions::HTTP_ERRORS => false,
-                RequestOptions::TIMEOUT => $this->timeout,
-                RequestOptions::QUERY => [
-                    'firstName' => $firstName,
-                    'lastName' => $lastName,
-                    'email' => $email,
-                ],
-            ];
+            $json = json_encode([
+                'firstName' => $firstName,
+                'lastName' => $lastName,
+                'email' => $email,
+            ], JSON_THROW_ON_ERROR);
 
-            $response = $this->httpClient->request('POST', $url, $options);
-        } catch (GuzzleException $e) {
+            $request = $this->requestFactory->createRequest('POST', $url);
+            $request = $request->withBody($this->streamFactory->createStream($json));
+            $response = $this->httpClient->sendRequest($request);
+
+        } catch (JsonException $e) {
+            throw new UsersInvalidArgumentException('Failed to encode user data to JSON', 0, $e);
+        } catch (ClientExceptionInterface $e) {
             throw new RemoteApiException('Failed to add user using remote API', 0, $e);
         }
 
