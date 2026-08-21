@@ -4,7 +4,6 @@ namespace YPost\DummyJsonUsers\Tests\Integration;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\HttpFactory;
-use GuzzleHttp\RequestOptions;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use YPost\DummyJsonUsers\Tests\Support\DebugHttpClient;

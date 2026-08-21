@@ -10,12 +10,11 @@ use JsonSerializable;
 class UserDTO implements JsonSerializable
 {
     public function __construct(
-        public int    $id,
+        public int $id,
         public string $firstName,
         public string $lastName,
         public string $email,
-    )
-    {
+    ) {
     }
 
     /**

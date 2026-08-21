@@ -14,11 +14,10 @@ class UsersListDTO implements JsonSerializable
      */
     public function __construct(
         public array $users,
-        public int   $total,
-        public int   $limit,
-        public int   $skip,
-    )
-    {
+        public int $total,
+        public int $limit,
+        public int $skip,
+    ) {
     }
 
     /**

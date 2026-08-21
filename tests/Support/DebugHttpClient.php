@@ -20,8 +20,7 @@ class DebugHttpClient implements ClientInterface
 
     public function __construct(
         private readonly ClientInterface $client,
-    )
-    {
+    ) {
     }
 
     public function sendRequest(RequestInterface $request): ResponseInterface

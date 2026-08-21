@@ -3,7 +3,6 @@
 namespace YPost\DummyJsonUsers\Tests\Unit;
 
 use GuzzleHttp\Psr7\HttpFactory;
-use InvalidArgumentException;
 use JsonException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -39,6 +38,10 @@ class UsersServiceTest extends TestCase
         self::assertSame('John', $user->firstName);
         self::assertSame('Doe', $user->lastName);
         self::assertSame('john@example.com', $user->email);
+
+        self::assertNotNull($mock->lastRequest);
+        self::assertSame('GET', $mock->lastRequest->getMethod());
+        self::assertSame('/users/1', $mock->lastRequest->getUri()->getPath());
     }
 
     /**
@@ -67,6 +70,8 @@ class UsersServiceTest extends TestCase
         $list = $service->getUsers(1);
 
         self::assertNotNull($mock->lastRequest);
+        self::assertSame('GET', $mock->lastRequest->getMethod());
+        self::assertSame('/users', $mock->lastRequest->getUri()->getPath());
 
         parse_str($mock->lastRequest->getUri()->getQuery(), $query);
 
@@ -126,6 +131,29 @@ class UsersServiceTest extends TestCase
         $newUserId = $service->addUser('John', 'Doe', 'john@example.com');
 
         self::assertSame(1000, $newUserId);
+
+        self::assertNotNull($mock->lastRequest);
+        self::assertSame('POST', $mock->lastRequest->getMethod());
+        self::assertSame('/users/add', $mock->lastRequest->getUri()->getPath());
+        self::assertSame('', $mock->lastRequest->getUri()->getQuery());
+        self::assertSame(
+            'application/json',
+            $mock->lastRequest->getHeaderLine('Content-Type')
+        );
+
+        self::assertSame(
+            [
+                'firstName' => 'John',
+                'lastName' => 'Doe',
+                'email' => 'john@example.com',
+            ],
+            json_decode(
+                (string)$mock->lastRequest->getBody(),
+                true,
+                512,
+                JSON_THROW_ON_ERROR,
+            ),
+        );
     }
 
     /**
@@ -355,10 +383,13 @@ class UsersServiceTest extends TestCase
         );
 
         $service = $this->createService($mock);
-        self::expectException(RemoteApiException::class);
-        $service->addUser('John', 'Doe', 'john@example.com');
 
-        self::assertCount(1, $mock->requests);
+        try {
+            $service->addUser('John', 'Doe', 'john@example.com');
+            self::fail('RemoteApiException should have been thrown');
+        } catch (RemoteApiException $e) {
+            self::assertCount(1, $mock->requests);
+        }
     }
 
     /**

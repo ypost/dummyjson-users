@@ -23,16 +23,18 @@ class UsersService
     public const string USER_FIELDS = 'id,firstName,lastName,email';
     private const array RETRY_STATUS_CODES = [429, 500, 502, 503, 504];
 
+    /**
+     * @throws UsersInvalidArgumentException
+     */
     public function __construct(
-        private readonly ClientInterface         $httpClient,
+        private readonly ClientInterface $httpClient,
         private readonly RequestFactoryInterface $requestFactory,
-        private readonly StreamFactoryInterface  $streamFactory,
-        private readonly int                     $maxAttempts = 3,
+        private readonly StreamFactoryInterface $streamFactory,
+        private readonly int $maxAttempts = 3,
         /** @var list<int> */
-        private readonly array                   $retryDelayMs = [100, 300, 500, 1000],
-        private readonly string                  $baseUri = self::DEFAULT_BASE_URI,
-    )
-    {
+        private readonly array $retryDelayMs = [100, 300, 500, 1000],
+        private readonly string $baseUri = self::DEFAULT_BASE_URI,
+    ) {
         if ($this->maxAttempts < 1) {
             throw new UsersInvalidArgumentException('Maximum number of attempts should be greater than 0.');
         }
@@ -48,6 +50,12 @@ class UsersService
         }
     }
 
+    /**
+     * @throws UsersInvalidArgumentException
+     * @throws UserNotFoundException
+     * @throws RemoteApiException
+     * @throws InvalidApiResponseException
+     */
     public function getUser(int $id): UserDTO
     {
         if ($id < 1) {
@@ -77,6 +85,11 @@ class UsersService
         return UserMapper::fromArray($data);
     }
 
+    /**
+     * @throws UsersInvalidArgumentException
+     * @throws RemoteApiException
+     * @throws InvalidApiResponseException
+     */
     public function getUsers(int $limit = 10, int $skip = 0): UsersListDTO
     {
         if ($limit < 1) {
@@ -123,7 +136,7 @@ class UsersService
             throw new InvalidApiResponseException('Failed to get users list: missing or not an array');
         }
 
-        if (empty($data['total']) || !is_int($data['total'])) {
+        if (!isset($data['total']) || !is_int($data['total'])) {
             throw new InvalidApiResponseException('Failed to get users list: missing total number');
         }
 
@@ -144,6 +157,11 @@ class UsersService
         );
     }
 
+    /**
+     * @throws UsersInvalidArgumentException
+     * @throws RemoteApiException
+     * @throws InvalidApiResponseException
+     */
     public function getUsersPage(int $page = 1, int $perPage = 10): UsersListDTO
     {
         if ($page < 1) {
@@ -164,12 +182,16 @@ class UsersService
         );
     }
 
+    /**
+     * @throws UsersInvalidArgumentException
+     * @throws RemoteApiException
+     * @throws InvalidApiResponseException
+     */
     public function addUser(
         string $firstName,
         string $lastName,
         string $email,
-    ): int
-    {
+    ): int {
         try {
             $url = sprintf('%s/users/add', $this->baseUri);
             $json = json_encode([
@@ -218,7 +240,9 @@ class UsersService
             || $data['lastName'] !== $lastName
             || $data['email'] !== $email
         ) {
-            throw new InvalidApiResponseException('Failed to add user using remote API: returned user data does not match');
+            throw new InvalidApiResponseException(
+                'Failed to add user using remote API: returned user data does not match'
+            );
         }
 
         return $data['id'];
